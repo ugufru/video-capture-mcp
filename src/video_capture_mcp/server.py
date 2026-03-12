@@ -6,6 +6,7 @@ from PIL import Image
 from .camera import capture_frame, list_cameras, record_video
 from .imaging import compare_images, manipulate_image
 from .ocr import extract_text
+from .screen import capture_screen as _capture_screen, list_screens as _list_screens, list_windows as _list_windows
 from .utils import image_to_base64, make_image_result, numpy_to_base64
 
 mcp = FastMCP("video-capture")
@@ -74,6 +75,8 @@ def ocr_image(
         import cv2
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(frame_rgb)
+    elif image_source == "screen":
+        image = _capture_screen()
     else:
         image = Image.open(image_source)
 
@@ -98,6 +101,8 @@ def compare_images_tool(
             frame = capture_frame(device_index)
             import cv2
             return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        if path == "screen":
+            return _capture_screen()
         return Image.open(path)
 
     img1 = load_image(image1_path)
@@ -131,6 +136,44 @@ def manipulate_image_tool(
     summary = f"Applied {len(operations)} operation(s): {', '.join(op_types)}"
 
     return make_image_result(image_to_base64(result), text=summary)
+
+
+@mcp.tool()
+def list_screens() -> str:
+    """List available displays with their index, resolution, and whether they are the main display."""
+    screens = _list_screens()
+    return json.dumps(screens, indent=2)
+
+
+@mcp.tool()
+def list_windows() -> str:
+    """List visible windows with their window ID, owner application, name, and bounds."""
+    windows = _list_windows()
+    return json.dumps(windows, indent=2)
+
+
+@mcp.tool()
+def capture_screen(
+    display_index: int | None = None,
+    window_id: int | None = None,
+    window_name: str | None = None,
+    region_x: int | None = None,
+    region_y: int | None = None,
+    region_width: int | None = None,
+    region_height: int | None = None,
+) -> list:
+    """Capture a screenshot. Optionally target a specific display, window, or region."""
+    region = None
+    if region_x is not None and region_y is not None and region_width is not None and region_height is not None:
+        region = (region_x, region_y, region_width, region_height)
+
+    image = _capture_screen(
+        display_index=display_index,
+        window_id=window_id,
+        window_name=window_name,
+        region=region,
+    )
+    return make_image_result(image_to_base64(image))
 
 
 def main():
