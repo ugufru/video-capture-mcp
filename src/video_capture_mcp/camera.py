@@ -68,8 +68,13 @@ def record_video(
     temp_dir = ensure_temp_dir()
     file_path = str(temp_dir / f"recording_{int(time.time())}.mp4")
 
+    # Try mp4v first, fall back to MJPG (better codec availability on RPi/Linux)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(file_path, fourcc, fps, (frame_width, frame_height))
+    if not writer.isOpened():
+        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+        file_path = file_path.replace(".mp4", ".avi")
+        writer = cv2.VideoWriter(file_path, fourcc, fps, (frame_width, frame_height))
 
     frames: list[numpy.ndarray] = []
     frame_interval = 1.0 / fps

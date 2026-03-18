@@ -1,13 +1,9 @@
 import json
 
 from mcp.server.fastmcp import FastMCP
-from PIL import Image
 
 from .camera import capture_frame, list_cameras, record_video
-from .imaging import compare_images, manipulate_image
-from .ocr import extract_text
-from .screen import capture_screen as _capture_screen, list_screens as _list_screens, list_windows as _list_windows
-from .utils import image_to_base64, make_image_result, numpy_to_base64
+from .utils import make_image_result, numpy_to_base64
 
 mcp = FastMCP("video-capture")
 
@@ -60,120 +56,6 @@ def capture_video(
             )
         )
     return content
-
-
-@mcp.tool()
-def ocr_image(
-    image_source: str = "capture",
-    device_index: int = 0,
-    preprocess: str = "auto",
-    lang: str = "eng",
-) -> list:
-    """Extract text from an image using OCR. Use image_source='capture' for live camera, or provide a file path."""
-    if image_source == "capture":
-        frame = capture_frame(device_index)
-        import cv2
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        image = Image.fromarray(frame_rgb)
-    elif image_source == "screen":
-        image = _capture_screen()
-    else:
-        image = Image.open(image_source)
-
-    text, preprocessed = extract_text(image, preprocess=preprocess, lang=lang)
-
-    return make_image_result(
-        image_to_base64(preprocessed),
-        text=f"OCR Result:\n{text}" if text else "No text detected",
-    )
-
-
-@mcp.tool()
-def compare_images_tool(
-    image1_path: str,
-    image2_path: str,
-    device_index: int = 0,
-    highlight_diff: bool = True,
-) -> list:
-    """Compare two images and return similarity metrics. Use 'capture' as a path to capture a live photo."""
-    def load_image(path: str) -> Image.Image:
-        if path == "capture":
-            frame = capture_frame(device_index)
-            import cv2
-            return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        if path == "screen":
-            return _capture_screen()
-        return Image.open(path)
-
-    img1 = load_image(image1_path)
-    img2 = load_image(image2_path)
-
-    result = compare_images(img1, img2, highlight_diff=highlight_diff)
-
-    summary = (
-        f"SSIM: {result['ssim']:.4f}\n"
-        f"Change: {result['change_percentage']:.1f}%\n"
-        f"Changed regions: {len(result['bounding_boxes'])}"
-    )
-
-    if result["diff_image"]:
-        return make_image_result(image_to_base64(result["diff_image"]), text=summary)
-
-    from mcp.types import TextContent
-    return [TextContent(type="text", text=summary)]
-
-
-@mcp.tool()
-def manipulate_image_tool(
-    image_path: str,
-    operations: list[dict],
-) -> list:
-    """Apply sequential image operations (crop, resize, rotate, annotate, brightness, contrast)."""
-    image = Image.open(image_path)
-    result = manipulate_image(image, operations)
-
-    op_types = [op.get("type", "unknown") for op in operations]
-    summary = f"Applied {len(operations)} operation(s): {', '.join(op_types)}"
-
-    return make_image_result(image_to_base64(result), text=summary)
-
-
-@mcp.tool()
-def list_screens() -> str:
-    """List available displays with their index, resolution, and whether they are the main display."""
-    screens = _list_screens()
-    return json.dumps(screens, indent=2)
-
-
-@mcp.tool()
-def list_windows() -> str:
-    """List visible windows with their window ID, owner application, name, and bounds."""
-    windows = _list_windows()
-    return json.dumps(windows, indent=2)
-
-
-@mcp.tool()
-def capture_screen(
-    display_index: int | None = None,
-    window_id: int | None = None,
-    window_name: str | None = None,
-    region_x: int | None = None,
-    region_y: int | None = None,
-    region_width: int | None = None,
-    region_height: int | None = None,
-) -> list:
-    """Capture a screenshot. Optionally target a specific display, window, or region."""
-    region = None
-    if region_x is not None and region_y is not None and region_width is not None and region_height is not None:
-        region = (region_x, region_y, region_width, region_height)
-
-    image = _capture_screen(
-        display_index=display_index,
-        window_id=window_id,
-        window_name=window_name,
-        region=region,
-    )
-    return make_image_result(image_to_base64(image))
 
 
 def main():

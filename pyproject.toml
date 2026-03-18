@@ -1,14 +1,12 @@
 [project]
 name = "video-capture-mcp"
-version = "0.1.0"
-description = "MCP server for camera capture, OCR, and image comparison"
+version = "2.0.0"
+description = "Cross-platform MCP server for camera photo and video capture"
 requires-python = ">=3.10"
 dependencies = [
     "mcp[cli]>=1.0.0",
-    "opencv-python>=4.8.0",
+    "opencv-python-headless>=4.8.0",
     "Pillow>=10.0.0",
-    "pytesseract>=0.3.10",
-    "scikit-image>=0.21.0",
 ]
 
 [project.scripts]
@@ -23,3 +21,8 @@ packages = ["src/video_capture_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
