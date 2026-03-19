@@ -76,6 +76,20 @@ Claude calls `capture_photo` with `device_index=0` and receives a PNG image it c
 
 Claude calls `capture_video` with `duration_seconds=10` and `return_frames=true`, receiving up to 5 evenly-spaced keyframes to analyze.
 
+## Supported Cameras
+
+The server discovers cameras via AVFoundation's `AVCaptureDeviceDiscoverySession`, finding both built-in and external devices:
+
+- **Built-in Mac cameras** — MacBook Pro/Air, iMac, Studio Display
+- **USB cameras** — any UVC-compatible webcam
+- **iPhone via Continuity Camera** — appears as an external device when:
+  - iPhone and Mac are on the same Wi-Fi / nearby via Bluetooth
+  - iPhone screen is locked (off)
+  - Both signed into the same Apple ID
+  - Continuity Camera enabled in iPhone Settings > General > AirPlay & Handoff
+
+Note: Continuity Camera exposes only the iPhone's main wide camera as a single device — the ultra-wide and telephoto lenses are not available as separate devices.
+
 ## Architecture
 
 - **AVFoundation** — native macOS camera access, no OpenCV dependency

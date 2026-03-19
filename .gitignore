@@ -37,3 +37,4 @@ htmlcov/
 
 # Temp files from this project
 /tmp/
+test-captures/
