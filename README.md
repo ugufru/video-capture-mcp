@@ -28,7 +28,7 @@ Other targets: `make clean`, `make rebuild`.
 
 ## Configuration
 
-### Claude Code
+### Claude Code (project-scoped)
 
 The repo includes `.mcp.json` — just clone and build:
 
@@ -40,6 +40,14 @@ The repo includes `.mcp.json` — just clone and build:
     }
   }
 }
+```
+
+### Claude Code (global)
+
+To make the server available in all sessions regardless of working directory:
+
+```bash
+claude mcp add --transport stdio --scope user video-capture /path/to/video-capture-mcp/cpp/build/video-capture-mcp
 ```
 
 ### Claude Desktop
@@ -55,6 +63,37 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+
+### Camera Permissions
+
+On first use, macOS will prompt for camera access. The terminal app running the MCP server (Terminal, iTerm2, etc.) must be granted camera permission in **System Settings > Privacy & Security > Camera**.
+
+## Tool Reference
+
+### `list_devices`
+
+No parameters. Returns an array of cameras with `index`, `name`, `width`, `height`, and `available` fields.
+
+### `capture_photo`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `device_index` | integer | `0` | Camera device index from `list_devices` |
+| `width` | integer | — | Desired width; selects nearest preset (1920, 1280, or 640) |
+| `height` | integer | — | Desired height |
+
+Returns a base64-encoded PNG image inline that Claude can see directly.
+
+### `capture_video`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `device_index` | integer | `0` | Camera device index |
+| `duration_seconds` | number | `5` | Recording duration (max 30) |
+| `fps` | number | `15` | Frames per second |
+| `return_frames` | boolean | `false` | Return up to 5 evenly-spaced keyframes as PNG images |
+
+Videos are saved as H.264 MP4 files to `~/.tmp/video-capture-mcp/`. When `return_frames` is true, Claude receives keyframe images it can analyze visually.
 
 ## Usage Examples
 
@@ -94,7 +133,7 @@ Note: Continuity Camera exposes only the iPhone's main wide camera as a single d
 
 - **AVFoundation** — native macOS camera access, no OpenCV dependency
 - **nlohmann/json** — JSON-RPC protocol handling (fetched by CMake)
-- **MCP stdio transport** — reads JSON-RPC from stdin, writes to stdout
+- **Dual transport** — auto-detects NDJSON (newline-delimited) or Content-Length framing (LSP-style)
 - **H.264 via AVAssetWriter** — hardware-accelerated video encoding
 
 ## Design Decisions
