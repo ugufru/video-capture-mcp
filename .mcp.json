@@ -1,8 +1,7 @@
 {
   "mcpServers": {
     "video-capture": {
-      "command": "uv",
-      "args": ["run", "--directory", "/Users/paul/github/video-capture-mcp", "video-capture-mcp"]
+      "command": "./cpp/build/video-capture-mcp"
     }
   }
 }

@@ -1,56 +1,42 @@
 # Video Capture MCP Server
 
-A cross-platform MCP server that gives Claude the ability to capture photos and video from attached cameras. Works on macOS, Linux, and Raspberry Pi.
+A native macOS MCP server that gives Claude the ability to capture photos and video from attached cameras. Built with AVFoundation and C++ for zero-dependency, high-performance camera access.
 
 ## Features
 
 | Tool | Description |
 |------|-------------|
-| **`list_devices`** | Discover available cameras — probes indices 0-9 and returns resolution and availability |
-| **`capture_photo`** | Capture a single photo from any camera, returned as a base64 PNG that Claude can see directly |
-| **`capture_video`** | Record up to 30 seconds of video, returning either an MP4 file path or up to 5 sampled keyframes as images |
-
-## Tech Stack
-
-- **Python 3.10+** with **uv** for project/dependency management
-- **MCP SDK** (FastMCP) for Claude integration
-- **OpenCV** (`opencv-python-headless`) for camera capture and video recording
-- **Pillow** for image encoding
+| **`list_devices`** | Discover available cameras with resolution and availability info |
+| **`capture_photo`** | Capture a single photo, returned as a base64 PNG that Claude can see directly |
+| **`capture_video`** | Record up to 30 seconds of H.264 video, optionally returning keyframe images |
 
 ## Prerequisites
 
-- **Python 3.10+**
-- **uv** — install via `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **macOS 13+** (Ventura or later)
+- **Xcode Command Line Tools** — `xcode-select --install`
+- **CMake** — `brew install cmake`
 
-### Raspberry Pi / Linux
-
-Install OpenCV system dependencies:
-
-```bash
-sudo apt install -y libgl1 libglib2.0-0 libsm6 libxext6 libxrender1
-```
-
-If using a USB camera, ensure it shows up via `v4l2-ctl --list-devices` or `ls /dev/video*`.
-
-## Installation
+## Build
 
 ```bash
-cd video-capture-mcp
-uv sync
+make build
 ```
+
+This runs CMake and compiles the native binary to `cpp/build/video-capture-mcp`.
+
+Other targets: `make clean`, `make rebuild`.
 
 ## Configuration
 
 ### Claude Code
 
-Add to your `.mcp.json` (project root or `~/.claude/.mcp.json`):
+The repo includes `.mcp.json` — just clone and build:
 
 ```json
 {
   "mcpServers": {
     "video-capture": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/video-capture-mcp", "video-capture-mcp"]
+      "command": "./cpp/build/video-capture-mcp"
     }
   }
 }
@@ -64,8 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "video-capture": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/video-capture-mcp", "video-capture-mcp"]
+      "command": "/path/to/video-capture-mcp/cpp/build/video-capture-mcp"
     }
   }
 }
@@ -77,7 +62,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 > "What cameras are available on this machine?"
 
-Claude calls `list_devices` and returns a list of camera indices with their resolutions.
+Claude calls `list_devices` and returns a list of cameras with their resolutions.
 
 ### Capture a photo
 
@@ -89,14 +74,33 @@ Claude calls `capture_photo` with `device_index=0` and receives a PNG image it c
 
 > "Record 10 seconds of video and show me what happened"
 
-Claude calls `capture_video` with `duration_seconds=10` and `return_frames=True`, receiving 5 evenly-spaced keyframes to analyze.
+Claude calls `capture_video` with `duration_seconds=10` and `return_frames=true`, receiving up to 5 evenly-spaced keyframes to analyze.
+
+## Architecture
+
+- **AVFoundation** — native macOS camera access, no OpenCV dependency
+- **nlohmann/json** — JSON-RPC protocol handling (fetched by CMake)
+- **MCP stdio transport** — reads JSON-RPC from stdin, writes to stdout
+- **H.264 via AVAssetWriter** — hardware-accelerated video encoding
+
+## Cross-Platform Fallback (Linux / Raspberry Pi)
+
+A Python/OpenCV implementation is available under `src/video_capture_mcp/` for Linux and Raspberry Pi:
+
+```bash
+# Install dependencies
+sudo apt install -y libgl1 libglib2.0-0 libsm6 libxext6 libxrender1
+uv sync
+
+# Configure with:
+# "command": "uv", "args": ["run", "--directory", "/path/to/repo", "video-capture-mcp"]
+```
 
 ## Design Decisions
 
-- **opencv-python-headless** — No GUI dependencies, works on headless servers and Raspberry Pi.
-- **Codec fallback** — Tries `mp4v` first, falls back to `MJPG` for environments with limited codec support.
-- **5 warm-up frames** — USB cameras on macOS auto-expose over the first few frames. Discarding them ensures accurate capture.
+- **5 warm-up frames** — USB cameras auto-expose over the first few frames. Discarding them ensures accurate capture.
 - **Video capped at 30 seconds** — MCP tools should return promptly.
+- **Native binary** — eliminates Python/OpenCV startup overhead (~2s → instant).
 
 ## License
 
