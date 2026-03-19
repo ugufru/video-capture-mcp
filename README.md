@@ -97,19 +97,6 @@ Note: Continuity Camera exposes only the iPhone's main wide camera as a single d
 - **MCP stdio transport** — reads JSON-RPC from stdin, writes to stdout
 - **H.264 via AVAssetWriter** — hardware-accelerated video encoding
 
-## Cross-Platform Fallback (Linux / Raspberry Pi)
-
-A Python/OpenCV implementation is available under `src/video_capture_mcp/` for Linux and Raspberry Pi:
-
-```bash
-# Install dependencies
-sudo apt install -y libgl1 libglib2.0-0 libsm6 libxext6 libxrender1
-uv sync
-
-# Configure with:
-# "command": "uv", "args": ["run", "--directory", "/path/to/repo", "video-capture-mcp"]
-```
-
 ## Design Decisions
 
 - **5 warm-up frames** — USB cameras auto-expose over the first few frames. Discarding them ensures accurate capture.
