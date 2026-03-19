@@ -15,17 +15,44 @@ void McpServer::add_tool(const std::string& name,
 }
 
 json McpServer::read_message() {
-    // MCP uses Content-Length framing (like LSP)
+    // Support both Content-Length framing (LSP-style) and bare NDJSON.
+    // Detect mode by peeking at the first non-whitespace byte:
+    //   '{' → NDJSON line
+    //   'C'  → Content-Length header
+
+    // Skip blank lines / whitespace between messages
+    int ch;
+    while ((ch = std::cin.peek()) != EOF) {
+        if (ch == '{' || ch == 'C') break;
+        std::cin.get();  // consume whitespace / newlines
+    }
+    if (ch == EOF) {
+        throw std::runtime_error("EOF");
+    }
+
+    if (ch == '{') {
+        // NDJSON mode: read one line of JSON
+        ndjson_mode_ = true;
+        std::string line;
+        if (!std::getline(std::cin, line)) {
+            throw std::runtime_error("EOF reading NDJSON line");
+        }
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        return json::parse(line);
+    }
+
+    // Content-Length framing mode
     std::string line;
     int content_length = -1;
 
     while (std::getline(std::cin, line)) {
-        // Strip \r if present
         if (!line.empty() && line.back() == '\r') {
             line.pop_back();
         }
         if (line.empty()) {
-            break;  // blank line = end of headers
+            break;
         }
         if (line.rfind("Content-Length:", 0) == 0) {
             content_length = std::stoi(line.substr(15));
@@ -48,9 +75,13 @@ json McpServer::read_message() {
 
 void McpServer::write_message(const json& msg) {
     std::string body = msg.dump();
-    std::cout << "Content-Length: " << body.size() << "\r\n"
-              << "\r\n"
-              << body;
+    if (ndjson_mode_) {
+        std::cout << body << "\n";
+    } else {
+        std::cout << "Content-Length: " << body.size() << "\r\n"
+                  << "\r\n"
+                  << body;
+    }
     std::cout.flush();
 }
 

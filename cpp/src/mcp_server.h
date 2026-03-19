@@ -30,7 +30,9 @@ class McpServer {
     };
     std::unordered_map<std::string, Tool> tools_;
 
-    // Read one JSON-RPC message from stdin
+    bool ndjson_mode_ = false;
+
+    // Read one JSON-RPC message from stdin (auto-detects NDJSON vs Content-Length)
     json read_message();
 
     // Write one JSON-RPC message to stdout
