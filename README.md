@@ -144,4 +144,4 @@ Note: Continuity Camera exposes only the iPhone's main wide camera as a single d
 
 ## License
 
-MIT
+BSD 2-Clause. See [LICENSE](LICENSE).
